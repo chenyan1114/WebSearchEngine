@@ -43,6 +43,9 @@ class CrawlerStatMixin:
     http_error_500_7  = Column(Integer, nullable=True)
     http_error_500_30 = Column(Integer, nullable=True)
 
+    # 當日成功率 = fetch_ok / fetch_total (僅 Total 表有值)
+    request_success_rate = Column(Float, nullable=True)
+
 
 # ==========================================
 # 2. 定義 Mixin: Metric Coverage (覆蓋率指標)

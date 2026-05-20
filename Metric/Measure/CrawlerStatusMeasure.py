@@ -93,7 +93,13 @@ class CrawlerStatusMeasure(Measure):
                     stats_data["fetch_total_30"] += f_total
                     stats_data["http_error_404_30"] += err_404
                     stats_data["http_error_500_30"] += err_500
-                    
+
+        # 當日成功率 (fetch_ok / fetch_total)
+        day_total = stats_data["fetch_total"]
+        stats_data["request_success_rate"] = (
+            stats_data["fetch_ok"] / day_total if day_total else 0.0
+        )
+
         return stats_data
 
     def test(self):
@@ -171,6 +177,8 @@ class CrawlerStatusMeasure(Measure):
                     ]
                     for k in keys_to_zero:
                         row_data[k] = 0
+                    # A/B 無法分拆 fetch 數據，成功率留空
+                    row_data["request_success_rate"] = None
 
                 # 執行 Upsert
                 stmt = insert(ModelClass).values(row_data)
@@ -205,5 +213,6 @@ class CrawlerStatusMeasure(Measure):
         print(f"  Fetch OK (Today):      {flow_stats['fetch_ok']:,}")
         print(f"  Fetch OK (7 Days):     {flow_stats['fetch_ok_7']:,}")
         print(f"  Fetch OK (30 Days):    {flow_stats['fetch_ok_30']:,}")
+        print(f"  Success Rate (Today):  {flow_stats['request_success_rate']:.2%}")
         print(f"  404 Errors (7 Days):   {flow_stats['http_error_404_7']:,}")
         print("="*50)
