@@ -1,0 +1,85 @@
+name: wse-superset
+
+services:
+  superset_db:
+    image: postgres:16
+    container_name: wse_superset_db
+    environment:
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+      POSTGRES_DB: superset
+    volumes:
+      - superset_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superset -d superset"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  superset:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: wse-superset:5.0.0
+    container_name: wse_superset
+    depends_on:
+      superset_db:
+        condition: service_healthy
+    environment:
+      SUPERSET_SECRET_KEY: "dev-only-change-me-please-rotate-0123456789abcd"
+      SUPERSET_METADATA_URI: "postgresql+psycopg2://superset:superset@superset_db:5432/superset"
+      SUPERSET_CONFIG_PATH: /app/superset_config.py
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin
+    volumes:
+      - ./superset_config.py:/app/superset_config.py:ro
+    ports:
+      - "8088:8088"
+    command:
+      - bash
+      - -c
+      - |
+        set -e
+        superset db upgrade
+        superset fab create-admin \
+          --username "$${ADMIN_USERNAME}" --firstname Admin --lastname User \
+          --email admin@superset.local --password "$${ADMIN_PASSWORD}" || true
+        superset init
+        exec gunicorn --bind 0.0.0.0:8088 --workers 4 --timeout 120 \
+          "superset.app:create_app()"
+    restart: unless-stopped
+
+  # Outbound Cloudflare Tunnel. Dials OUT, so it works behind NAT / campus
+  # firewall with no sudo. Both are off by default (each gated by a profile).
+  # The cloudflared image is distroless (no shell), so args go straight to it.
+
+  # Quick tunnel: random https://*.trycloudflare.com, no auth, URL changes on
+  # restart.   docker compose --profile quick up -d cloudflared-quick
+  #            docker compose logs cloudflared-quick   # URL is printed here
+  cloudflared-quick:
+    image: cloudflare/cloudflared:latest
+    container_name: wse_cloudflared_quick
+    profiles: ["quick"]
+    command: ["tunnel", "--no-autoupdate", "--url", "http://superset:8088"]
+    depends_on:
+      - superset
+    restart: unless-stopped
+
+  # Named tunnel: stable hostname + Cloudflare Access. Needs a domain on
+  # Cloudflare and a connector token.
+  #   echo 'CLOUDFLARED_TOKEN=<token>' >> .env
+  #   docker compose --profile tunnel up -d cloudflared
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: wse_cloudflared
+    profiles: ["tunnel"]
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: "${CLOUDFLARED_TOKEN:-}"
+    depends_on:
+      - superset
+    restart: unless-stopped
+
+volumes:
+  superset_db_data:
