@@ -32,7 +32,7 @@ services:
       SELECT_DB_URL: ${SELECT_DB_URL:-postgresql+psycopg2://select:select@selectdb:5432/selectdb}
       RUN_ROOT: /runtime
       IPC_QUEUE_DIR: ${IPC_QUEUE_DIR:-/data/indexselection_v1/ipc}
-      TRAIN_SCHEDULE: ${TRAIN_SCHEDULE:-0 0 1,16 * *}
+      TRAIN_SCHEDULE: ${TRAIN_SCHEDULE:-0 0 8,23 * *}
       TRAIN_BATCHES: ${TRAIN_BATCHES:-10}
       TEST_BATCHES: ${TEST_BATCHES:-0}
       NEGATIVE_SAMPLE_TARGET: ${NEGATIVE_SAMPLE_TARGET:-1000000}

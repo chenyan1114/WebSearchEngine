@@ -2,7 +2,7 @@
 set -euo pipefail
 
 : "${SELECT_DB_URL:?SELECT_DB_URL is required}"
-: "${REFRESH_SCHEDULE:=${TRAIN_SCHEDULE:-0 0 1,16 * *}}"
+: "${REFRESH_SCHEDULE:=${TRAIN_SCHEDULE:-0 0 8,23 * *}}"
 : "${SCHEDULER_TICK_SCHEDULE:=0 0 * * *}"
 
 mkdir -p /var/log/indexselection
